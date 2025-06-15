@@ -1,0 +1,71 @@
+# Simple workflow for deploying Angular content to GitHub Pages
+name: Deploy Angular content to Pages
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ["main"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Single deploy job since we're just deploying
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 1: Set up Node.js with the specified version
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22' # Use Node.js version 22 as requested
+          cache: 'npm' # Cache npm dependencies for faster builds
+
+      # Step 2: Install project dependencies
+      - name: Install Dependencies
+        run: npm ci # Use npm ci for clean installs in CI environments
+
+      # Step 3: Build the Angular project for production
+      # The '--base-href' is crucial for GitHub Pages to correctly resolve assets.
+      # Replace 'your-repository-name' with the actual name of your GitHub repository.
+      # For example, if your repo is 'https://github.com/your-username/my-angular-app',
+      # then --base-href=/my-angular-app/
+      # Also, ensure 'dist/your-project-name' matches your Angular project's output path.
+      # By default, Angular CLI puts the build output in 'dist/<project-name>'.
+      - name: Build Angular Project
+        run: npm run build -- --output-path=docs --base-href=/${{ github.event.repository.name }}/
+        # Using 'docs' as output-path, as GitHub Pages can directly serve from a 'docs' folder
+        # or a 'gh-pages' branch. This simplifies the upload step.
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # Step 4: Upload the Angular build artifact
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # The path should point to your Angular build output directory.
+          # We specified 'docs' in the build step, so we'll upload from there.
+          path: './docs'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
