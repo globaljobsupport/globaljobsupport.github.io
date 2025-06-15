@@ -22,7 +22,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
     environment:
       name: github-pages
@@ -32,38 +31,44 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Step 1: Set up Node.js with the specified version
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22' # Use Node.js version 22 as requested
-          cache: 'npm' # Cache npm dependencies for faster builds
+          node-version: '22'
+          cache: 'npm'
 
-      # Step 2: Install project dependencies
       - name: Install Dependencies
-        run: npm ci # Use npm ci for clean installs in CI environments
+        run: npm ci
 
-      # Step 3: Build the Angular project for production
-      # The '--base-href' is crucial for GitHub Pages to correctly resolve assets.
-      # Replace 'your-repository-name' with the actual name of your GitHub repository.
-      # For example, if your repo is 'https://github.com/your-username/my-angular-app',
-      # then --base-href=/my-angular-app/
-      # Also, ensure 'dist/your-project-name' matches your Angular project's output path.
-      # By default, Angular CLI puts the build output in 'dist/<project-name>'.
       - name: Build Angular Project
+        # The '--output-path=docs' creates a 'docs' folder at the root of your repository
+        # containing the build artifacts.
+        # The '--base-href' is crucial for GitHub Pages. Replace 'your-repo-name'
+        # with the actual name of your GitHub repository (e.g., if your URL is
+        # https://username.github.io/my-angular-app/, then your repo name is 'my-angular-app').
         run: npm run build -- --output-path=docs --base-href=/${{ github.event.repository.name }}/
-        # Using 'docs' as output-path, as GitHub Pages can directly serve from a 'docs' folder
-        # or a 'gh-pages' branch. This simplifies the upload step.
+
+      # --- NEW VERIFICATION STEP ---
+      - name: Verify build output
+        run: |
+          echo "Listing contents of the 'docs' directory:"
+          ls -R docs
+          echo "Checking for index.html in docs/"
+          if [ -f docs/index.html ]; then
+            echo "index.html found in docs/!"
+          else
+            echo "WARNING: index.html NOT found in docs/. Your Angular build might not be outputting correctly."
+            exit 1 # Fail the workflow if index.html is missing
+          fi
+      # --- END VERIFICATION STEP ---
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # Step 4: Upload the Angular build artifact
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # The path should point to your Angular build output directory.
-          # We specified 'docs' in the build step, so we'll upload from there.
+          # This path must point to the directory containing your built Angular application's index.html
           path: './docs'
 
       - name: Deploy to GitHub Pages
